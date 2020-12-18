@@ -8,7 +8,7 @@ import './index.css'
  */
 function Square(props){
   return (
-    <button className="square" onClick={props.onTest} >
+    <button className="square" onClick={props.ontesttestClick} >
       {props.value}
     </button>
   );
@@ -47,27 +47,28 @@ function Square(props){
 
 class Board extends React.Component {
   // 複数の子コンポーネント(Square)で管理されているstateを親コンポーネント(Board)で扱うことで、子コンポーネントで複数扱えるようにする。（親コンポーネントへのリフトアップ）
-  constructor(props){
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true
-    };
-  }
+  // constructor(props){
+  //   super(props);
+  //   this.state = {
+  //     squares: Array(9).fill(null),
+  //     xIsNext: true
+  //   };
+  // }
 
   // クリックされたsquareに印付けを行う。
-  handleClick(i) {
-    const squares = this.state.squares.slice(); // イミュータビリティの実現
-    //squares[i] = 'X';
-    if(calculateWinner(squares) || squares[i]){
-      return;//ゲームの決着が既についている場合やクリックされたマス目が既に埋まっている場合に早期に return するようにします。
-    }
-    squares[i] = this.state.xIsNext ? 'X' : 'O'; 
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext // プレイヤーの手番管理
-    }); //★ここで、個々のstateをBoardで管理できるようにしている
-  }
+  /**Gameコンポーネントへのstateリフトアップしたことにより、Gameコンポーネントに移動 */
+  // handleClick(i) {
+  //   const squares = this.state.squares.slice(); // イミュータビリティの実現
+  //   //squares[i] = 'X';
+  //   if(calculateWinner(squares) || squares[i]){
+  //     return;//ゲームの決着が既についている場合やクリックされたマス目が既に埋まっている場合に早期に return するようにします。
+  //   }
+  //   squares[i] = this.state.xIsNext ? 'X' : 'O'; 
+  //   this.setState({
+  //     squares: squares,
+  //     xIsNext: !this.state.xIsNext // プレイヤーの手番管理
+  //   }); //★ここで、個々のstateをBoardで管理できるようにしている
+  // }
 
   renderSquare(i) {
     {/* データを Props 経由で渡す
@@ -76,8 +77,8 @@ class Board extends React.Component {
     return <Square value={i}/>;
      */}
     return (<Square 
-              value={this.state.squares[i]}
-              onTest={() => this.handleClick(i)}
+              value={this.props.squares[i]} // Gameコンポーネントへstateをリフトアップしたことにより、this.state.squares[i]からpropsに変更し、square関数コンポーネントにデータを渡す
+              ontesttestClick={() => this.props.onTestClick(i)} // this.handleClick(i)から変更
             />
           );
           {/*マス目がクリックされた時に Square にその関数を呼んでもらうようにした */}
@@ -87,17 +88,18 @@ class Board extends React.Component {
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status;
-    if(winner){
-      status = 'Winner:' + winner;
-    }else {
-      status = 'Next player: ' +(this.state.xIsNext ? 'X' : 'O');
-    }
+    /**Gameコンポーネントでstateリフトアップしたことにより、不要 */
+    // const winner = calculateWinner(this.state.squares);
+    // let status;
+    // if(winner){
+    //   status = 'Winner:' + winner;
+    // }else {
+    //   status = 'Next player: ' +(this.state.xIsNext ? 'X' : 'O');
+    // }
 
     return (
       <div>
-        <div className="status">{status}</div>
+        {/*<div className="status">{status}</div> */}
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -119,14 +121,58 @@ class Board extends React.Component {
 }
 
 class Game extends React.Component {
+  /**
+   * Board にある state をトップレベルの Game コンポーネントにリフトアップ */
+  constructor(props){
+    super(props);
+    this.state = {
+      history:[{
+        squares: Array(9).fill(null)
+      }],
+      xIsNext: true
+    };
+  }
+
+  // Boardコンポーネントから移動。Game コンポーネントの state は異なる形で構成されていますので、handleClick の中身も修正する必要があります
+  // 新しい履歴エントリを history に追加します。
+  handleClick(i) {
+    const history = this.state.history;
+    const current = history[history.length - 1];
+    const squares = current.squares.slice();
+    if(calculateWinner(squares) || squares[i]){
+      return;//ゲームの決着が既についている場合やクリックされたマス目が既に埋まっている場合に早期に return するようにします。
+    }
+    squares[i] = this.state.xIsNext ? 'X' : 'O'; // ここで最新手順の入力値をstateにセット
+    this.setState({
+      history: history.concat([{
+        squares: squares
+      }]),
+      xIsNext: !this.state.xIsNext // プレイヤーの手番管理
+    }); //★ここで、個々のstateをBoardで管理できるようにしている
+  }
+
   render() {
+    /**ゲームのステータステキストの決定や表示の際に最新の履歴が使われるようにします。 */
+    const history = this.state.history;
+    const current = history[history.length - 1];
+    const winner = calculateWinner(current.squares);
+    let status;
+    if (winner) {
+      status = 'Winner: ' + winner;
+    } else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+    }
+    
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          {/*Gameコンポーネントでstateをリフトアップしたことにより、props経由でデータを渡す */}
+          <Board
+            squares={current.squares}
+            onTestClick={(i) => this.handleClick(i)} />{/*★ここのiはGameコンポーネント内で指定していないが、レンダー時にナンバリングされる？ */}
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
+          <div>{status}</div>
           <ol>{/* TODO */}</ol>
         </div>
       </div>
